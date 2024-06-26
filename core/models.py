@@ -23,12 +23,28 @@ class Transaction(models.Model):
         return f"{self.transaction_type} of {self.amount} on {self.timestamp}"
 
 
+class UserTier(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    AVAILABLE_TIERS = [
+        ('beginner', 'Beginner'),
+        ('master', 'Master'),
+    ]
+    name = models.CharField(max_length=12, choices=AVAILABLE_TIERS)
+    max_transaction_limit = models.DecimalField(max_digits=10, decimal_places=2)
+    
+    class Meta:
+        verbose_name_plural = "UserTiers"
+
+    def __str__(self):
+        return f"{self.name}"
+
 
 class Guard(models.Model):
+
+
     wallet = models.OneToOneField(Wallet, on_delete=models.CASCADE)
     max_transaction_limit = models.DecimalField(max_digits=10, decimal_places=2, default=1000.00)
     notification_email = models.EmailField()
 
     def __str__(self):
         return f"Guard settings for {self.wallet.user.username}'s Wallet"
-
