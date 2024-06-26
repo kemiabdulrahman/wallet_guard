@@ -1,0 +1,139 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Wallet Guard{% endblock %}
+
+{% block content %}
+<style type="text/css" media="screen">
+	.hidden {
+		display:none	
+	}
+</style>
+    <div class="container py-5">
+	<div class="row justify-content-center align-items-center">
+		<p class="display-5 py-3 mb-2">Welcome to <b> Wallet Guard</b>. Here you can manage your wallet and transactions securely.</p>
+	</div>
+        <!-- Wallet Details -->
+		
+	<div class="row justify-content-center align-items-center py-5">
+		<div class="col-12 text-center">
+			<h2 class="my-3 h2 mb-4 text-start fw-semibold">Wallet Details</h2>
+			<div id="wallet-details" class="mt-8 row row-cols-md-2">
+				<div class="mb-5">
+					<p class="h3">Balance: <span id="balance"><b>${{ wallet.balance }}</b></span></p>
+				</div>
+				<div>
+				    <h2 class="h3">Transactions</h2>
+				    <ul id="transaction-list">
+					{% for transaction in transactions %}
+					    <li>{{ transaction.timestamp }} - {{ transaction.transaction_type }}: {{ transaction.amount }} ({{ transaction.description }})</li>
+					{% endfor %}
+				    </ul>
+				</div>
+			</div>
+				
+		</div>
+	</div>
+	<div class="row py-5 justify-content-center text-center align-items-center">
+		<button id="showFormButton" class="btn btn-primary btn-lg mb-3">Make Transaction</button>
+	</div>
+        <!-- Transaction Form -->
+        <div id="transaction-form" class="mt-8 hidden">
+            <h2 class="mb-3 text-center ">Make a Transaction</h2>
+            <form id="transactionForm">
+                {% csrf_token %}
+                {{ form.as_p }}
+                <button type="submit" class="btn btn-primary text-white p-2">Submit</button>
+            </form>
+        </div>
+    </div>
+
+     <!-- New Section for Response -->
+    <div id="response-section" class="container mx-auto mt-8 hidden">
+        <!-- Content will be injected here by main.js -->
+    </div>
+{% endblock %}
+
+{% block script %}
+<script defer>
+	
+$(document).ready(function() {
+
+  const form = document.getElementById('transactionForm');
+  console.log(form);
+
+
+    // Show the transaction form when the button is clicked
+    $('#showFormButton').on('click', function() {
+        $('#transaction-form').removeClass('hidden');
+        $('html, body').animate({
+            scrollTop: $("#transaction-form").offset().top
+        }, 500);
+        $('#showFormButton').hide();
+    });
+    
+    $('#transactionForm').on('submit', function(e) {
+        e.preventDefault();
+
+        const csrf = document.getElementsByName('csrfmiddlewaretoken');
+        const transactionType = document.getElementsByName('transaction_type');
+        const amount = document.getElementsByName('amount');
+        const description = document.getElementsByName('description');
+
+        const fd = new FormData();
+        fd.append('csrfmiddlewaretoken', csrf[0].value);
+        fd.append('transaction_type', transactionType.value);
+        fd.append('amount', amount.value);
+        fd.append('description', description.value);
+        
+
+        $.ajax({
+            type: "POST",
+            url: "{% url 'wallet:make_transaction' %}",
+            data: fd,
+            success: function(response) {
+                if (response.error) {
+                    alert(response.error);
+                } else {
+                    console.log(response);
+                    $('#balance').text(response.balance);
+                    $('#transaction-list').prepend(
+                        '<li>' + response.timestamp + ' - ' + response.transaction_type + ': ' + response.amount + ' (' + response.description + ')</li>'
+                    );
+                    $('#transactionForm')[0].reset();
+
+                    // Display response on a new page-like section
+                    $('#response-section').html(
+                        '<h2 class="text-2xl font-bold">Transaction Successful</h2>' +
+                        '<p>Amount: ' + response.amount + '</p>' +
+                        '<p>Type: ' + response.transaction_type + '</p>' +
+                        '<p>Description: ' + response.description + '</p>' +
+                        '<p>Timestamp: ' + response.timestamp + '</p>' +
+                        '<button id="back-button" class="bg-blue-500 text-white p-2 rounded mt-4">Back</button>'
+                    );
+                    $('#response-section').show();
+                    $('#main-content').hide();
+
+                    // Handle back button click
+                    $('#back-button').on('click', function() {
+                        $('#response-section').hide();
+                        $('#main-content').show();
+                    });
+                }   
+            },
+            error: function(response) {
+                console.log("AJAX error: ", response);
+                alert('An error occurred. Please try again.');
+            },
+          cache: false,
+          contentType: false,
+          processData: false,
+        });
+    });
+});
+	
+</script>
+<script src="{% static 'js/main.js' %}" defer></script>
+	
+{% endblock script %}
+
